@@ -1,0 +1,32 @@
+use gimme_backend::{config::Config, db, routers};
+use std::net::SocketAddr;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+#[tokio::main]
+async fn main() {
+    // Initialize config
+    let config = Config::init();
+
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(&config.rust_log))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    // Connect to database
+    let db_conn = db::connect(&config)
+        .await
+        .expect("Failed to connect to database");
+
+    tracing::info!("Connected to database");
+
+    // Initialize router
+    let app = routers::init_router(db_conn);
+
+    // Start server
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));
+    tracing::info!("Listening on {}", addr);
+    
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}

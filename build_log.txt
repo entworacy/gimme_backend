@@ -1,0 +1,539 @@
+﻿cargo :     Checking 
+gimme_backend v0.1.0 
+(D:\gimme_backend)
+위치 줄:1 문자:1
++ cargo check 2>&1 | 
+Out-File -Encoding ut
+f8 build_log.txt
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpeci
+fi    ed: (    Checki
+ng     gi...\gimme_ba
+cken    d):String) []
+, Rem    oteException
+    + FullyQualifiedE
+r    rorId : NativeCo
+mm    andError
+ 
+error[E0277]: the tra
+it bound `fn(State<Da
+tabaseConnection>, ..
+.) -> ... {create_use
+r}: Handler<_, _>` is
+ not satisfied
+   --> src\routers\mo
+d.rs:12:31
+    |
+ 12 |         .route(
+"/users", post(user::
+create_user))
+    |                
+          ---- ^^^^^^
+^^^^^^^^^^^ the trait
+ `Handler<_, _>` is n
+ot implemented for fn
+ item `fn(State<Datab
+aseConnection>, Json<
+...>) -> ... {create_
+user}`
+    |                
+          |
+    |                
+          required by
+ a bound introduced b
+y this call
+    |
+    = note: Consider 
+using `#[axum::debug_
+handler]` to improve 
+the error message
+    = help: the follo
+wing other types impl
+ement trait `Handler<
+T, S>`:
+              `Layere
+d<L, H, T, S>` implem
+ents `Handler<T, S>`
+              `Method
+Router<S>` implements
+ `Handler<(), S>`
+note: required by a b
+ound in `post`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\meth
+od_routing.rs:443:1
+    |
+443 | top_level_handl
+er_fn!(post, POST);
+    | ^^^^^^^^^^^^^^^
+^^^^^^^----^^^^^^^
+    | |              
+       |
+    | |              
+       required by a 
+bound in this functio
+n
+    | required by thi
+s bound in `post`
+    = note: the full 
+name for the type has
+ been written to 'D:\
+gimme_backend\target\
+debug\deps\gimme_back
+end-e5c5cbfc7db58670.
+long-type-16905540590
+67247556.txt'
+    = note: consider 
+using `--verbose` to 
+print the full type n
+ame to the console
+    = note: this erro
+r originates in the m
+acro `top_level_handl
+er_fn` (in Nightly bu
+ilds, run with -Z mac
+ro-backtrace for more
+ info)
+
+error[E0277]: the tra
+it bound `fn(State<Da
+tabaseConnection>, ..
+.) -> ... {get_user}:
+ Handler<_, _>` is no
+t satisfied
+   --> src\routers\mo
+d.rs:13:34
+    |
+ 13 |         .route(
+"/users/:id", get(use
+r::get_user))
+    |                
+              --- ^^^
+^^^^^^^^^^^ the trait
+ `Handler<_, _>` is n
+ot implemented for fn
+ item `fn(State<Datab
+aseConnection>, Path<
+i32>) -> ... {get_use
+r}`
+    |                
+              |
+    |                
+              require
+d by a bound introduc
+ed by this call
+    |
+    = note: Consider 
+using `#[axum::debug_
+handler]` to improve 
+the error message
+    = help: the follo
+wing other types impl
+ement trait `Handler<
+T, S>`:
+              `Layere
+d<L, H, T, S>` implem
+ents `Handler<T, S>`
+              `Method
+Router<S>` implements
+ `Handler<(), S>`
+note: required by a b
+ound in `axum::routin
+g::get`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\meth
+od_routing.rs:439:1
+    |
+439 | top_level_handl
+er_fn!(get, GET);
+    | ^^^^^^^^^^^^^^^
+^^^^^^^---^^^^^^
+    | |              
+       |
+    | |              
+       required by a 
+bound in this functio
+n
+    | required by thi
+s bound in `get`
+    = note: the full 
+name for the type has
+ been written to 'D:\
+gimme_backend\target\
+debug\deps\gimme_back
+end-e5c5cbfc7db58670.
+long-type-64299635087
+13496287.txt'
+    = note: consider 
+using `--verbose` to 
+print the full type n
+ame to the console
+    = note: this erro
+r originates in the m
+acro `top_level_handl
+er_fn` (in Nightly bu
+ilds, run with -Z mac
+ro-backtrace for more
+ info)
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:10:5
+    |
+ 10 |     Router::new
+()
+    |     ^^^^^^^^^^^
+^^ the trait `Clone` 
+is not implemented fo
+r `DatabaseConnection
+`
+    |
+note: required by a b
+ound in `Router::<S>:
+:new`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\mod.
+rs:133:8
+    |
+133 |     S: Clone + 
+Send + Sync + 'static
+,
+    |        ^^^^^ re
+quired by this bound 
+in `Router::<S>::new`
+...
+139 |     pub fn new(
+) -> Self {
+    |            --- 
+required by a bound i
+n this associated fun
+ction
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:11:10
+    |
+ 11 |         .route(
+"/health", get(|| asy
+nc { "OK" }))
+    |          ^^^^^ 
+the trait `Clone` is 
+not implemented for `
+DatabaseConnection`
+    |
+note: required by a b
+ound in `Router::<S>:
+:route`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\mod.
+rs:133:8
+    |
+133 |     S: Clone + 
+Send + Sync + 'static
+,
+    |        ^^^^^ re
+quired by this bound 
+in `Router::<S>::rout
+e`
+...
+164 |     pub fn rout
+e(self, path: &str, m
+ethod_router: MethodR
+outer<S>) -> Self {
+    |            ----
+- required by a bound
+ in this associated f
+unction
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:11:27
+    |
+ 11 |         .route(
+"/health", get(|| asy
+nc { "OK" }))
+    |                
+           ^^^^^^^^^^
+^^^^^^^^^^^^ the trai
+t `Clone` is not impl
+emented for `Database
+Connection`
+    |
+note: required by a b
+ound in `axum::routin
+g::get`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\meth
+od_routing.rs:439:1
+    |
+439 | top_level_handl
+er_fn!(get, GET);
+    | ^^^^^^^^^^^^^^^
+^^^^^^^---^^^^^^
+    | |              
+       |
+    | |              
+       required by a 
+bound in this functio
+n
+    | required by thi
+s bound in `get`
+    = note: this erro
+r originates in the m
+acro `top_level_handl
+er_fn` (in Nightly bu
+ilds, run with -Z mac
+ro-backtrace for more
+ info)
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:12:10
+    |
+ 12 |         .route(
+"/users", post(user::
+create_user))
+    |          ^^^^^ 
+the trait `Clone` is 
+not implemented for `
+DatabaseConnection`
+    |
+note: required by a b
+ound in `Router::<S>:
+:route`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\mod.
+rs:133:8
+    |
+133 |     S: Clone + 
+Send + Sync + 'static
+,
+    |        ^^^^^ re
+quired by this bound 
+in `Router::<S>::rout
+e`
+...
+164 |     pub fn rout
+e(self, path: &str, m
+ethod_router: MethodR
+outer<S>) -> Self {
+    |            ----
+- required by a bound
+ in this associated f
+unction
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:12:26
+    |
+ 12 |         .route(
+"/users", post(user::
+create_user))
+    |                
+          ^^^^^^^^^^^
+^^^^^^^^^^^^ the trai
+t `Clone` is not impl
+emented for `Database
+Connection`
+    |
+note: required by a b
+ound in `post`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\meth
+od_routing.rs:443:1
+    |
+443 | top_level_handl
+er_fn!(post, POST);
+    | ^^^^^^^^^^^^^^^
+^^^^^^^----^^^^^^^
+    | |              
+       |
+    | |              
+       required by a 
+bound in this functio
+n
+    | required by thi
+s bound in `post`
+    = note: this erro
+r originates in the m
+acro `top_level_handl
+er_fn` (in Nightly bu
+ilds, run with -Z mac
+ro-backtrace for more
+ info)
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:13:10
+    |
+ 13 |         .route(
+"/users/:id", get(use
+r::get_user))
+    |          ^^^^^ 
+the trait `Clone` is 
+not implemented for `
+DatabaseConnection`
+    |
+note: required by a b
+ound in `Router::<S>:
+:route`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\mod.
+rs:133:8
+    |
+133 |     S: Clone + 
+Send + Sync + 'static
+,
+    |        ^^^^^ re
+quired by this bound 
+in `Router::<S>::rout
+e`
+...
+164 |     pub fn rout
+e(self, path: &str, m
+ethod_router: MethodR
+outer<S>) -> Self {
+    |            ----
+- required by a bound
+ in this associated f
+unction
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:13:30
+    |
+ 13 |         .route(
+"/users/:id", get(use
+r::get_user))
+    |                
+              ^^^^^^^
+^^^^^^^^^^^^ the trai
+t `Clone` is not impl
+emented for `Database
+Connection`
+    |
+note: required by a b
+ound in `axum::routin
+g::get`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\meth
+od_routing.rs:439:1
+    |
+439 | top_level_handl
+er_fn!(get, GET);
+    | ^^^^^^^^^^^^^^^
+^^^^^^^---^^^^^^
+    | |              
+       |
+    | |              
+       required by a 
+bound in this functio
+n
+    | required by thi
+s bound in `get`
+    = note: this erro
+r originates in the m
+acro `top_level_handl
+er_fn` (in Nightly bu
+ilds, run with -Z mac
+ro-backtrace for more
+ info)
+
+error[E0277]: the tra
+it bound `DatabaseCon
+nection: Clone` is no
+t satisfied
+   --> src\routers\mo
+d.rs:14:10
+    |
+ 14 |         .with_s
+tate(db)
+    |          ^^^^^^
+^^^^ the trait `Clone
+` is not implemented 
+for `DatabaseConnecti
+on`
+    |
+note: required by a b
+ound in `Router::<S>:
+:with_state`
+   --> C:\Users\Syste
+m32\.cargo\registry\s
+rc\index.crates.io-19
+49cf8c6b5b557f\axum-0
+.7.9\src\routing\mod.
+rs:133:8
+    |
+133 |     S: Clone + 
+Send + Sync + 'static
+,
+    |        ^^^^^ re
+quired by this bound 
+in `Router::<S>::with
+_state`
+...
+370 |     pub fn with
+_state<S2>(self, stat
+e: S) -> Router<S2> {
+    |            ----
+------ required by a 
+bound in this associa
+ted function
+
+For more information 
+about this error, try
+ `rustc --explain E02
+77`.
+error: could not comp
+ile `gimme_backend` (
+lib) due to 10 previo
+us errors
