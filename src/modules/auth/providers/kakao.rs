@@ -87,25 +87,24 @@ impl OAuthProvider for KakaoProvider {
             .map_err(|e| {
                 AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
             })?
-            .json::<KakaoUserResponse>()
+            .json::<serde_json::Value>()
             .await
             .map_err(|e| {
                 AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
             })?;
 
         println!("{:?}", user_res);
-        let account = user_res.kakao_account;
 
-        let email = account.as_ref().and_then(|a| a.email.clone());
-        let name = account
-            .as_ref()
-            .and_then(|a| a.profile.as_ref())
-            .and_then(|p| p.nickname.clone());
+        //let email = account.as_ref().and_then(|a| a.email.clone());
+        //let name = account
+        //    .as_ref()
+        //    .and_then(|a| a.profile.as_ref())
+        //    .and_then(|p| p.nickname.clone());
 
         Ok(OAuthUserInfo {
-            provider_id: user_res.id.to_string(),
-            email,
-            name,
+            provider_id: String::new(),
+            email: None,
+            name: None,
         })
     }
 }
