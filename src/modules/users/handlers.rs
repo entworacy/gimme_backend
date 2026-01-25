@@ -1,13 +1,25 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
+    response::Redirect,
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::modules::users::entities::{enums::AccountStatus, user, verification};
-use crate::shared::error::{AppError, AppResult};
+use crate::modules::auth::{registry::OAuthProviderRegistry, service::AuthService};
+use crate::modules::users::entities::{
+    enums::AccountStatus, social::SocialProvider, user, verification,
+};
+use crate::shared::{
+    config::Config,
+    error::{AppError, AppResult},
+};
+
+#[derive(Deserialize)]
+pub struct OAuthCallbackParams {
+    pub code: String,
+}
 
 #[derive(Deserialize)]
 pub struct CreateUserRequest {
@@ -119,6 +131,66 @@ pub async fn get_user(
         created_at: user.created_at,
         updated_at: user.updated_at,
         last_login_at: user.last_login_at,
+    }))
+}
+
+#[derive(Serialize)]
+pub struct OAuthLoginResponse {
+    pub token: String,
+    pub token_type: String,
+}
+
+pub async fn login_oauth(
+    Path(provider): Path<String>,
+    State(auth_registry): State<OAuthProviderRegistry>,
+) -> AppResult<Redirect> {
+    let provider_enum = match provider.to_lowercase().as_str() {
+        "kakao" => SocialProvider::Kakao,
+        "google" => SocialProvider::Google,
+        "apple" => SocialProvider::Apple,
+        _ => return Err(AppError::BadRequest("Invalid provider".to_string())),
+    };
+
+    let oauth_provider = auth_registry
+        .get(provider_enum)
+        .ok_or(AppError::InternalServerError(
+            "Provider not configured".to_string(),
+        ))?;
+
+    let auth_url = oauth_provider.get_authorization_url();
+    Ok(Redirect::to(&auth_url))
+}
+
+pub async fn callback_oauth(
+    State(db): State<Arc<DatabaseConnection>>,
+    State(config): State<Arc<Config>>,
+    State(auth_registry): State<OAuthProviderRegistry>,
+    Path(provider): Path<String>,
+    Query(params): Query<OAuthCallbackParams>,
+) -> AppResult<Json<OAuthLoginResponse>> {
+    let provider_enum = match provider.to_lowercase().as_str() {
+        "kakao" => SocialProvider::Kakao,
+        "google" => SocialProvider::Google,
+        "apple" => SocialProvider::Apple,
+        _ => return Err(AppError::BadRequest("Invalid provider".to_string())),
+    };
+
+    let oauth_provider =
+        auth_registry
+            .get(provider_enum.clone())
+            .ok_or(AppError::InternalServerError(
+                "Provider not configured".to_string(),
+            ))?;
+
+    // 1. Get User Info from Provider
+    let user_info = oauth_provider.get_user_info(&params.code).await?;
+
+    // 2. Login or Register
+    let token = AuthService::handle_social_login(&db, &config, provider_enum, user_info).await?;
+
+    Ok(Json(OAuthLoginResponse {
+        token,
+        token_type: "Bearer".to_string(),
     }))
 }
 

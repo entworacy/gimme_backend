@@ -45,7 +45,10 @@ async fn main() {
     // Aggregate routes from modules
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .nest("/users", modules::users::router::router(db.clone()))
+        .nest(
+            "/users",
+            modules::users::router::router(db.clone(), config_arc.clone(), auth_registry.clone()),
+        )
         .nest(
             "/auth",
             modules::auth::router::router(db.clone(), config_arc.clone(), auth_registry),

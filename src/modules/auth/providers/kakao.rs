@@ -2,6 +2,7 @@ use super::{OAuthProvider, OAuthUserInfo};
 use crate::shared::error::{AppError, AppResult};
 use async_trait::async_trait;
 use reqwest::Client;
+use sea_orm::sea_query::token;
 use serde::Deserialize;
 
 pub struct KakaoProvider {
@@ -20,23 +21,23 @@ impl KakaoProvider {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct KakaoTokenResponse {
     access_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct KakaoUserAccount {
     email: Option<String>,
     profile: Option<KakaoUserProfile>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct KakaoUserProfile {
     nickname: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct KakaoUserResponse {
     id: i64,
     kakao_account: Option<KakaoUserAccount>,
@@ -75,6 +76,7 @@ impl OAuthProvider for KakaoProvider {
                 AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
             })?;
 
+        println!("{:?}", token_res);
         // 2. Get User Info
         let user_res = self
             .client
@@ -91,6 +93,7 @@ impl OAuthProvider for KakaoProvider {
                 AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
             })?;
 
+        println!("{:?}", user_res);
         let account = user_res.kakao_account;
 
         let email = account.as_ref().and_then(|a| a.email.clone());
