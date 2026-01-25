@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::json;
 use thiserror::Error;
@@ -10,12 +10,12 @@ use thiserror::Error;
 pub enum AppError {
     #[error("Database error: {0}")]
     DbError(#[from] sea_orm::DbErr),
-    
+
     #[error("Not found")]
     NotFound,
-    
-    #[error("Internal server error")]
-    InternalServerError,
+
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
 }
 
 impl IntoResponse for AppError {
@@ -23,10 +23,19 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::DbError(err) => {
                 tracing::error!("Database error: {:?}", err);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Database error".to_string(),
+                )
             }
             AppError::NotFound => (StatusCode::NOT_FOUND, "Not found".to_string()),
-            AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
+            AppError::InternalServerError(msg) => {
+                tracing::error!("Internal server error: {}", msg);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
+            }
         };
 
         (
@@ -35,7 +44,7 @@ impl IntoResponse for AppError {
                 "error": message
             })),
         )
-        .into_response()
+            .into_response()
     }
 }
 

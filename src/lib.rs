@@ -1,6 +1,2 @@
-pub mod config;
-pub mod db;
-pub mod entities;
-pub mod handlers;
-pub mod routers;
-pub mod error;
+pub mod shared;
+pub mod modules;

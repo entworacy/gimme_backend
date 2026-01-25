@@ -1,5 +1,5 @@
 use sea_orm::{Database, DatabaseConnection, DbErr, MockDatabase, DatabaseBackend};
-use crate::config::Config;
+use crate::shared::config::Config;
 
 pub async fn connect(config: &Config) -> Result<DatabaseConnection, DbErr> {
     if config.app_env == "dev" {
