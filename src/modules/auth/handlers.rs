@@ -1,17 +1,16 @@
 use axum::{
     Json,
     extract::{Query, State},
-    response::{IntoResponse, Redirect},
+    response::Redirect,
 };
-use sea_orm::DatabaseConnection;
-use serde::Deserialize;
-use std::sync::Arc;
 
-use super::{providers::OAuthProvider, registry::OAuthProviderRegistry, service::AuthService};
+use serde::Deserialize;
+
+use super::service::AuthService;
 use crate::modules::users::entities::social::SocialProvider;
 use crate::shared::{
-    config::Config,
     error::{AppError, AppResult},
+    state::AppState,
 };
 
 #[derive(Deserialize)]
@@ -19,11 +18,10 @@ pub struct AuthCallbackParams {
     code: String,
 }
 
-pub async fn login_kakao(
-    State(auth_registry): State<OAuthProviderRegistry>,
-) -> AppResult<Redirect> {
+pub async fn login_kakao(State(state): State<AppState>) -> AppResult<Redirect> {
     let kakao_provider =
-        auth_registry
+        state
+            .auth_registry
             .get(SocialProvider::Kakao)
             .ok_or(AppError::InternalServerError(
                 "Kakao provider not configured".to_string(),
@@ -34,13 +32,12 @@ pub async fn login_kakao(
 }
 
 pub async fn callback_kakao(
-    State(db): State<Arc<DatabaseConnection>>,
-    State(config): State<Arc<Config>>,
-    State(auth_registry): State<OAuthProviderRegistry>,
+    State(state): State<AppState>,
     Query(params): Query<AuthCallbackParams>,
 ) -> AppResult<Json<serde_json::Value>> {
     let kakao_provider =
-        auth_registry
+        state
+            .auth_registry
             .get(SocialProvider::Kakao)
             .ok_or(AppError::InternalServerError(
                 "Kakao provider not configured".to_string(),
@@ -50,12 +47,18 @@ pub async fn callback_kakao(
     let user_info = kakao_provider.get_user_info(&params.code).await?;
 
     // 2. Login or Register
-    let token =
-        AuthService::handle_social_login(&db, &config, SocialProvider::Kakao, user_info).await?;
+    let (token, need_more_action) = AuthService::handle_social_login(
+        state.user_repo.as_ref(),
+        &state.config,
+        SocialProvider::Kakao,
+        user_info,
+    )
+    .await?;
 
     // Return JWT (In real app, maybe set cookie or redirect to frontend with token)
     Ok(Json(serde_json::json!({
         "token": token,
-        "token_type": "Bearer"
+        "token_type": "Bearer",
+        "need_more_action": need_more_action,
     })))
 }

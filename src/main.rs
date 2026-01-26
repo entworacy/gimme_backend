@@ -5,7 +5,7 @@ use gimme_backend::{
         auth::{providers::kakao::KakaoProvider, registry::OAuthProviderRegistry},
         users::entities::social::SocialProvider,
     },
-    shared::{config::Config, db},
+    shared::{config::Config, db, state::AppState},
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -23,15 +23,24 @@ async fn main() {
         .init();
 
     // Connect to database
-    let db_conn = db::connect(&config)
-        .await
-        .expect("Failed to connect to database");
+    // Configure Repository based on Env
+    let user_repo: Arc<dyn modules::users::repository::UserRepository> = if config.app_env == "dev"
+    {
+        tracing::warn!("Using InMemory Repository for Dev Env");
+        Arc::new(modules::users::repository::InMemoryUserRepository::new())
+    } else {
+        let db_conn = db::connect(&config)
+            .await
+            .expect("Failed to connect to database");
+        tracing::info!("Connected to database");
+        Arc::new(modules::users::repository::PostgresUserRepository::new(
+            Arc::new(db_conn),
+        ))
+    };
 
-    tracing::info!("Connected to database");
     tracing::info!("Current App Env: {}", config.app_env);
 
-    let db = Arc::new(db_conn);
-    let config_arc = Arc::new(config.clone()); // Assuming Config derives Clone, checking... yes it does.
+    let config_arc = Arc::new(config.clone());
 
     let auth_registry = OAuthProviderRegistry::new().register(
         SocialProvider::Kakao,
@@ -41,18 +50,18 @@ async fn main() {
         ),
     );
 
+    let app_state = AppState {
+        config: config_arc,
+        auth_registry: auth_registry.clone(), // Registry might need to be Arc-ed or Clone is cheap? It's a HashMap inside?
+        user_repo,
+    };
+
     // Initialize router
     // Aggregate routes from modules
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .nest(
-            "/users",
-            modules::users::router::router(db.clone(), config_arc.clone(), auth_registry.clone()),
-        )
-        .nest(
-            "/auth",
-            modules::auth::router::router(db.clone(), config_arc.clone(), auth_registry),
-        );
+        .nest("/users", modules::users::router::router(app_state.clone()))
+        .nest("/auth", modules::auth::router::router(app_state));
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));

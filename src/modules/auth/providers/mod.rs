@@ -8,6 +8,10 @@ pub struct OAuthUserInfo {
     pub provider_id: String,
     pub email: Option<String>,
     pub name: Option<String>,
+    pub age_range: Option<String>,
+    pub birthyear: String,
+    pub phone_number: Option<String>,
+    pub connected_at: Option<String>,
 }
 
 #[async_trait]

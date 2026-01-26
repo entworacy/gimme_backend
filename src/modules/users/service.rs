@@ -1,94 +1,102 @@
-use crate::modules::auth::providers::OAuthUserInfo;
+use crate::modules::users::dtos::SocialLoginDto;
 use crate::modules::users::entities::{
-    social::{self, SocialProvider},
+    social::{self},
     user,
 };
+use crate::modules::users::repository::UserRepository;
 use crate::shared::error::{AppError, AppResult};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
-    TransactionTrait,
-};
-use std::sync::Arc;
+use sea_orm::ActiveValue::Set;
 
 pub struct UserService;
 
 impl UserService {
-    pub async fn find_or_create_social_user(
-        db: &DatabaseConnection,
-        provider: SocialProvider,
-        user_info: OAuthUserInfo,
+    pub async fn handle_social_login(
+        repo: &dyn UserRepository,
+        login_dto: SocialLoginDto,
     ) -> AppResult<user::Model> {
         // 1. Check if Social Account exists
-        let social_account = social::Entity::find()
-            .filter(social::Column::Provider.eq(provider.clone()))
-            .filter(social::Column::ProviderId.eq(user_info.provider_id.clone()))
-            .one(db)
-            .await
-            .map_err(AppError::DbError)?;
+        let social_account = repo
+            .find_social(login_dto.provider.clone(), &login_dto.provider_id)
+            .await?;
 
         if let Some(social) = social_account {
-            // User exists, return user
-            return user::Entity::find_by_id(social.user_id)
-                .one(db)
-                .await
-                .map_err(AppError::DbError)?
-                .ok_or(AppError::InternalServerError(
-                    "User not found for social account".to_string(),
-                ));
+            let user =
+                repo.find_by_id(social.user_id)
+                    .await?
+                    .ok_or(AppError::InternalServerError(
+                        "User not found for social account".to_string(),
+                    ))?;
+
+            // Logic a: Check status
+            match user.account_status {
+                crate::modules::users::entities::enums::AccountStatus::Active => {
+                    return Err(AppError::Conflict(
+                        "User already exists and is active".to_string(),
+                    ));
+                }
+                crate::modules::users::entities::enums::AccountStatus::Pending => {
+                    // TODO: Re-trigger Email Verification Logic here
+                    // For now, just return user to allow login/proceed (or maybe we shouldn't login?)
+                    // The requirement says: "별도의 DB 삽입없이 Email 인증만 새로 생성하고"
+                    // implies we might just want to send email again.
+                    // But if this is "Login", we probably return the user so they can theoretically get a token?
+                    // OR if the flow is Strict Registration, maybe we return OK but frontend handles it?
+                    // Assuming we return User for now.
+                    return Ok(user);
+                }
+                _ => return Ok(user), // Inactive/Suspended?
+            }
         }
 
-        // 2. Create new User and Social Account
-        Self::register_social_user(db, provider, user_info).await
-    }
-
-    async fn register_social_user(
-        db: &DatabaseConnection,
-        provider: SocialProvider,
-        user_info: OAuthUserInfo,
-    ) -> AppResult<user::Model> {
-        let txn = db.begin().await.map_err(AppError::DbError)?;
+        // 2. Create new User
+        // UUID Logic: SHA512(provider_id|unix|JAY|PROP|connected_at)
+        let connected_at = login_dto
+            .connected_at
+            .clone()
+            .ok_or(AppError::BadRequest("Missing connected_at".to_string()))?;
+        let new_uuid =
+            crate::modules::users::utils::generate_user_uuid(&login_dto.provider_id, &connected_at);
 
         let now = chrono::Utc::now().naive_utc();
-        let uuid = uuid::Uuid::new_v4().as_u128().to_string();
 
-        // Create User
+        // Prepare User ActiveModel
         let new_user = user::ActiveModel {
-            uuid: Set(uuid),
-            username: Set(user_info.name.unwrap_or_else(|| "User".to_string())),
-            email: Set(user_info.email.unwrap_or_else(|| "".to_string())),
+            uuid: Set(new_uuid),
+            username: Set(login_dto.name.unwrap_or_else(|| "User".to_string())),
+            email: Set(login_dto.email.unwrap_or_else(|| "".to_string())),
             country_code: Set("".to_string()),
             phone_number: Set("".to_string()),
-            account_status: Set(crate::modules::users::entities::enums::AccountStatus::Active),
+            account_status: Set(crate::modules::users::entities::enums::AccountStatus::Pending),
             created_at: Set(now),
             updated_at: Set(now),
             last_login_at: Set(Some(now)),
             ..Default::default()
         };
 
-        let user = new_user.insert(&txn).await.map_err(AppError::DbError)?;
-
-        // Create Social Record
+        // Prepare Social ActiveModel
         let new_social = social::ActiveModel {
-            user_id: Set(user.id),
-            provider: Set(provider),
-            provider_id: Set(user_info.provider_id),
+            provider: Set(login_dto.provider),
+            provider_id: Set(login_dto.provider_id),
             created_at: Set(now),
             ..Default::default()
         };
-        new_social.insert(&txn).await.map_err(AppError::DbError)?;
 
-        // Create blank verification record
-        let verification = crate::modules::users::entities::verification::ActiveModel {
-            user_id: Set(user.id),
-            email_verified: Set(true),
+        // Prepare Verification ActiveModel
+        let new_verification = crate::modules::users::entities::verification::ActiveModel {
+            email_verified: Set(false),
             phone_verified: Set(false),
             business_verified: Set(false),
+            business_info: Set(Some("{}".to_string())), // Default JSON string
             ..Default::default()
         };
-        verification.insert(&txn).await.map_err(AppError::DbError)?;
 
-        txn.commit().await.map_err(AppError::DbError)?;
+        // Delegate to Repo
+        let created_user = repo
+            .create_user_with_verification(new_user, Some(new_social), new_verification)
+            .await?;
 
-        Ok(user)
+        // TODO: Send Verification Email here
+
+        Ok(created_user)
     }
 }

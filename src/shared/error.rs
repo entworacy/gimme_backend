@@ -19,6 +19,12 @@ pub enum AppError {
 
     #[error("Bad request: {0}")]
     BadRequest(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
 }
 
 impl IntoResponse for AppError {
@@ -51,6 +57,8 @@ impl IntoResponse for AppError {
             AppError::BadRequest(msg) => {
                 (StatusCode::BAD_REQUEST, msg, "400", "APP_UPDATE_REQUIRED")
             }
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg, "409", "CONFLICT"),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg, "401", "UNAUTHORIZED"),
         };
 
         (

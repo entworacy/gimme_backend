@@ -1,3 +1,4 @@
+pub mod extractors;
 pub mod handlers;
 pub mod providers;
 pub mod registry;

@@ -19,3 +19,4 @@ uuid = { version = "1.20.0", features = ["v4", "fast-rng"] }
 async-trait = "0.1.89"
 jsonwebtoken = { version = "10.2.0", features = ["use_pem", "rust_crypto"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+sha2 = "0.10.9"

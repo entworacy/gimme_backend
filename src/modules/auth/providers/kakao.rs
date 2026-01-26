@@ -2,7 +2,7 @@ use super::{OAuthProvider, OAuthUserInfo};
 use crate::shared::error::{AppError, AppResult};
 use async_trait::async_trait;
 use reqwest::Client;
-use sea_orm::sea_query::token;
+
 use serde::Deserialize;
 
 pub struct KakaoProvider {
@@ -29,6 +29,9 @@ struct KakaoTokenResponse {
 #[derive(Deserialize, Debug)]
 struct KakaoUserAccount {
     email: Option<String>,
+    age_range: Option<String>,
+    birthyear: String,
+    phone_number: Option<String>,
     profile: Option<KakaoUserProfile>,
 }
 
@@ -40,6 +43,7 @@ struct KakaoUserProfile {
 #[derive(Deserialize, Debug)]
 struct KakaoUserResponse {
     id: i64,
+    connected_at: Option<String>,
     kakao_account: Option<KakaoUserAccount>,
 }
 
@@ -68,15 +72,14 @@ impl OAuthProvider for KakaoProvider {
             .send()
             .await
             .map_err(|e| {
-                AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
+                AppError::InternalServerError(format!("Kakao token request failed: {}", e))
             })?
             .json::<KakaoTokenResponse>()
             .await
             .map_err(|e| {
-                AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
+                AppError::InternalServerError(format!("Kakao token parse failed: {}", e))
             })?;
 
-        println!("{:?}", token_res);
         // 2. Get User Info
         let user_res = self
             .client
@@ -85,26 +88,41 @@ impl OAuthProvider for KakaoProvider {
             .send()
             .await
             .map_err(|e| {
-                AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
+                AppError::InternalServerError(format!("Kakao user info request failed: {}", e))
             })?
-            .json::<serde_json::Value>()
+            .json::<KakaoUserResponse>()
             .await
             .map_err(|e| {
-                AppError::InternalServerError(format!("There is a problem with your Kakao account login request, please try again in a moment: {}", e))
+                AppError::InternalServerError(format!("Kakao user info parse failed: {}", e))
             })?;
 
-        println!("{:?}", user_res);
-
-        //let email = account.as_ref().and_then(|a| a.email.clone());
-        //let name = account
-        //    .as_ref()
-        //    .and_then(|a| a.profile.as_ref())
-        //    .and_then(|p| p.nickname.clone());
+        let email = user_res
+            .kakao_account
+            .as_ref()
+            .and_then(|a| a.email.clone());
+        let name = user_res
+            .kakao_account
+            .as_ref()
+            .and_then(|a| a.profile.as_ref())
+            .and_then(|p| p.nickname.clone());
+        let age_range = user_res
+            .kakao_account
+            .as_ref()
+            .and_then(|a| a.age_range.clone());
+        let birthyear = user_res.kakao_account.as_ref().unwrap().birthyear.clone();
+        let phone_number = user_res
+            .kakao_account
+            .as_ref()
+            .and_then(|a| a.phone_number.clone());
 
         Ok(OAuthUserInfo {
-            provider_id: String::new(),
-            email: None,
-            name: None,
+            provider_id: user_res.id.to_string(),
+            email,
+            age_range,
+            birthyear,
+            phone_number,
+            name,
+            connected_at: user_res.connected_at,
         })
     }
 }
