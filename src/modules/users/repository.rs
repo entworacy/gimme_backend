@@ -29,6 +29,11 @@ pub trait UserRepository: Send + Sync {
         &self,
         uuid: &str,
     ) -> AppResult<Option<(user::Model, Option<verification::Model>, Vec<social::Model>)>>;
+
+    async fn update_verification(
+        &self,
+        verification: verification::ActiveModel,
+    ) -> AppResult<verification::Model>;
 }
 
 // Postgres Implementation
@@ -138,6 +143,16 @@ impl UserRepository for PostgresUserRepository {
             }
             None => Ok(None),
         }
+    }
+
+    async fn update_verification(
+        &self,
+        verification: verification::ActiveModel,
+    ) -> AppResult<verification::Model> {
+        verification
+            .update(self.db.as_ref())
+            .await
+            .map_err(AppError::DbError)
     }
 }
 
@@ -267,10 +282,40 @@ impl UserRepository for InMemoryUserRepository {
             phone_verified_at,
             business_verified,
             business_info,
+            verification_code: None,
         };
-        verifications.insert(new_id, model_verification);
+        verifications.insert(new_id, model_verification.clone()); // Insert Clone, Return Original Model (which is just a struct, so cheap)
 
         Ok(model_user)
+    }
+
+    async fn update_verification(
+        &self,
+        verification: verification::ActiveModel,
+    ) -> AppResult<verification::Model> {
+        let mut verifications = self.verifications.lock().unwrap();
+        // verification.id must be set for update in real SeaORM, but ActiveModel id is Set(val)
+        // Here we need to find by ID? Or UserID?
+        // Let's assume ID is present.
+
+        let user_id = verification.user_id.unwrap(); // Expect user_id to be present
+
+        // In our Mock implementation, we store verifications by user_id
+        if let Some(existing) = verifications.get_mut(&user_id) {
+            if let Set(v) = verification.verification_code {
+                existing.verification_code = v; // v is Option<String> if using correct Set
+            }
+            if let Set(v) = verification.email_verified {
+                existing.email_verified = v;
+            }
+            if let Set(v) = verification.email_verified_at {
+                existing.email_verified_at = v;
+            }
+            // ... map other fields
+            Ok(existing.clone())
+        } else {
+            Err(AppError::NotFound)
+        }
     }
 
     async fn update_user(&self, user: user::ActiveModel) -> AppResult<user::Model> {

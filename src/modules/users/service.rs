@@ -65,7 +65,7 @@ impl UserService {
             username: Set(login_dto.name.unwrap_or_else(|| "User".to_string())),
             email: Set(login_dto.email.unwrap_or_else(|| "".to_string())),
             country_code: Set("".to_string()),
-            phone_number: Set("".to_string()),
+            phone_number: Set(login_dto.phone_number.unwrap_or_else(|| "".to_string())),
             account_status: Set(crate::modules::users::entities::enums::AccountStatus::Pending),
             created_at: Set(now),
             updated_at: Set(now),
@@ -87,6 +87,7 @@ impl UserService {
             phone_verified: Set(false),
             business_verified: Set(false),
             business_info: Set(Some("{}".to_string())), // Default JSON string
+            verification_code: Set(None),
             ..Default::default()
         };
 

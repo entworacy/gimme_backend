@@ -16,6 +16,8 @@ pub struct Model {
     pub business_verified: bool,
     #[sea_orm(column_type = "Text", nullable)]
     pub business_info: Option<String>,
+    #[sea_orm(column_type = "String(StringLen::N(6))", nullable)]
+    pub verification_code: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

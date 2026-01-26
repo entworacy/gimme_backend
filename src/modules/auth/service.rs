@@ -34,6 +34,7 @@ impl AuthService {
             provider_id: user_info.provider_id,
             email: user_info.email,
             name: user_info.name,
+            phone_number: user_info.phone_number,
             connected_at: user_info.connected_at,
         };
 
