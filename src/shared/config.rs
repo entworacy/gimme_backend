@@ -11,6 +11,9 @@ pub struct Config {
     pub app_env: String,
     pub kakao_client_id: String,
     pub kakao_redirect_uri: String,
+    pub gmail_user: String,
+    pub gmail_app_password: String,
+    pub redis_url: String,
 }
 
 impl Config {
@@ -30,6 +33,14 @@ impl Config {
         let kakao_client_id = env::var("KAKAO_CLIENT_ID").unwrap_or_else(|_| "".to_string());
         let kakao_redirect_uri = env::var("KAKAO_REDIRECT_URI").unwrap_or_else(|_| "".to_string());
 
+        // Gmail Config
+        let gmail_user = env::var("GMAIL_USER").unwrap_or_else(|_| "".to_string());
+        let gmail_app_password = env::var("GMAIL_APP_PASSWORD").unwrap_or_else(|_| "".to_string());
+
+        // Redis Config
+        let redis_url =
+            env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379/".to_string());
+
         Self {
             database_url,
             server_host,
@@ -38,6 +49,9 @@ impl Config {
             app_env,
             kakao_client_id,
             kakao_redirect_uri,
+            gmail_user,
+            gmail_app_password,
+            redis_url,
         }
     }
 }

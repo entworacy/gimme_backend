@@ -23,6 +23,23 @@ pub struct Claims {
 pub struct AuthService;
 
 impl AuthService {
+    pub async fn reset_email_verified(
+        repo: &dyn UserRepository,
+        uuid: String,
+        target_email: String,
+    ) -> AppResult<bool> {
+        let (_, verification, _) = repo
+            .find_with_details_by_uuid(&uuid)
+            .await?
+            .ok_or(AppError::NotFound)?;
+
+        let mut verification_model: crate::modules::users::entities::verification::ActiveModel =
+            verification.ok_or(AppError::NotFound)?.into();
+        verification_model.email_verified = true;
+        verification_model.update().await?;
+        Ok(true)
+    }
+
     pub async fn handle_social_login(
         repo: &dyn UserRepository,
         config: &Config,

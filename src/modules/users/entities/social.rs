@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum SocialProvider {
     #[sea_orm(string_value = "KAKAO")]
+    #[serde(rename(serialize = "KAKAO"))]
     Kakao,
     #[sea_orm(string_value = "GOOGLE")]
     Google,

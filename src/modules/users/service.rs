@@ -60,10 +60,20 @@ impl UserService {
         let now = chrono::Utc::now().naive_utc();
 
         // Prepare User ActiveModel
+        let username = login_dto.name.unwrap_or_else(|| "User".to_string());
+        let email = login_dto.email.unwrap_or_else(|| "".to_string());
+
+        if username == "User" {
+            return Err(AppError::BadRequest(
+                "Username or email is missing (maybe oauth provider's issue)".to_string(),
+            ));
+        }
+
+        // Prepare User ActiveModel
         let new_user = user::ActiveModel {
             uuid: Set(new_uuid),
-            username: Set(login_dto.name.unwrap_or_else(|| "User".to_string())),
-            email: Set(login_dto.email.unwrap_or_else(|| "".to_string())),
+            username: Set(username),
+            email: Set(email),
             country_code: Set("".to_string()),
             phone_number: Set(login_dto.phone_number.unwrap_or_else(|| "".to_string())),
             account_status: Set(crate::modules::users::entities::enums::AccountStatus::Pending),
@@ -93,7 +103,7 @@ impl UserService {
 
         // Delegate to Repo
         let created_user = repo
-            .create_user_with_verification(new_user, Some(new_social), new_verification)
+            .create_user_with_verification(new_user.clone(), Some(new_social), new_verification)
             .await?;
 
         // TODO: Send Verification Email here

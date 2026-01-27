@@ -1,6 +1,7 @@
 use crate::shared::error::AppResult;
 use async_trait::async_trait;
 
+pub mod email;
 pub mod kakao;
 
 #[derive(Debug)]

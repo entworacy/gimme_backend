@@ -1,14 +1,6 @@
 use axum::{Router, routing::get};
-use gimme_backend::{
-    modules::{
-        self,
-        auth::{providers::kakao::KakaoProvider, registry::OAuthProviderRegistry},
-        users::entities::social::SocialProvider,
-    },
-    shared::{config::Config, db, state::AppState},
-};
+use gimme_backend::{bootstrap, modules, shared::config::Config};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -22,39 +14,10 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // Connect to database
-    // Configure Repository based on Env
-    let user_repo: Arc<dyn modules::users::repository::UserRepository> = if config.app_env == "dev"
-    {
-        tracing::warn!("Using InMemory Repository for Dev Env");
-        Arc::new(modules::users::repository::InMemoryUserRepository::new())
-    } else {
-        let db_conn = db::connect(&config)
-            .await
-            .expect("Failed to connect to database");
-        tracing::info!("Connected to database");
-        Arc::new(modules::users::repository::PostgresUserRepository::new(
-            Arc::new(db_conn),
-        ))
-    };
-
     tracing::info!("Current App Env: {}", config.app_env);
 
-    let config_arc = Arc::new(config.clone());
-
-    let auth_registry = OAuthProviderRegistry::new().register(
-        SocialProvider::Kakao,
-        KakaoProvider::new(
-            config.kakao_client_id.clone(),
-            config.kakao_redirect_uri.clone(),
-        ),
-    );
-
-    let app_state = AppState {
-        config: config_arc,
-        auth_registry: auth_registry.clone(), // Registry might need to be Arc-ed or Clone is cheap? It's a HashMap inside?
-        user_repo,
-    };
+    // Bootstrap AppState
+    let app_state = bootstrap::create_app_state(&config).await;
 
     // Initialize router
     // Aggregate routes from modules

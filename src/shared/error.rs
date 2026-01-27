@@ -25,6 +25,9 @@ pub enum AppError {
 
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl IntoResponse for AppError {
@@ -35,14 +38,14 @@ impl IntoResponse for AppError {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Database error".to_string(),
-                    "",
+                    "".to_string(),
                     "INTERNAL_SERVER_ERROR",
                 )
             }
             AppError::NotFound => (
                 StatusCode::NOT_FOUND,
                 "Not found".to_string(),
-                "404",
+                "404".to_string(),
                 "APP_UPDATE_REQUIRED",
             ),
             AppError::InternalServerError(msg) => {
@@ -50,15 +53,26 @@ impl IntoResponse for AppError {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal server error".to_string(),
-                    "500",
+                    msg,
                     "INTERNAL_SERVER_ERROR",
                 )
             }
-            AppError::BadRequest(msg) => {
-                (StatusCode::BAD_REQUEST, msg, "400", "APP_UPDATE_REQUIRED")
+            AppError::BadRequest(msg) => (
+                StatusCode::BAD_REQUEST,
+                msg.clone(),
+                msg,
+                "APP_UPDATE_REQUIRED",
+            ),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg, "409".to_string(), "CONFLICT"),
+            AppError::Unauthorized(msg) => (
+                StatusCode::UNAUTHORIZED,
+                msg,
+                "401".to_string(),
+                "UNAUTHORIZED",
+            ),
+            AppError::Forbidden(msg) => {
+                (StatusCode::FORBIDDEN, msg, "403".to_string(), "FORBIDDEN")
             }
-            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg, "409", "CONFLICT"),
-            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg, "401", "UNAUTHORIZED"),
         };
 
         (

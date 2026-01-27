@@ -34,6 +34,12 @@ pub trait UserRepository: Send + Sync {
         &self,
         verification: verification::ActiveModel,
     ) -> AppResult<verification::Model>;
+
+    async fn complete_email_verification(
+        &self,
+        user: user::ActiveModel,
+        verification: verification::ActiveModel,
+    ) -> AppResult<user::Model>;
 }
 
 // Postgres Implementation
@@ -153,6 +159,21 @@ impl UserRepository for PostgresUserRepository {
             .update(self.db.as_ref())
             .await
             .map_err(AppError::DbError)
+    }
+
+    async fn complete_email_verification(
+        &self,
+        user: user::ActiveModel,
+        verification: verification::ActiveModel,
+    ) -> AppResult<user::Model> {
+        let txn = self.db.begin().await.map_err(AppError::DbError)?;
+
+        verification.update(&txn).await.map_err(AppError::DbError)?;
+        let user_model = user.update(&txn).await.map_err(AppError::DbError)?;
+
+        txn.commit().await.map_err(AppError::DbError)?;
+
+        Ok(user_model)
     }
 }
 
@@ -326,6 +347,9 @@ impl UserRepository for InMemoryUserRepository {
             if let Set(v) = user.account_status {
                 existing.account_status = v;
             }
+            if let Set(v) = user.email {
+                existing.email = v;
+            }
             // ... map other fields if needed for full mock correctness
         }
 
@@ -352,5 +376,49 @@ impl UserRepository for InMemoryUserRepository {
         } else {
             Ok(None)
         }
+    }
+
+    async fn complete_email_verification(
+        &self,
+        user: user::ActiveModel,
+        verification: verification::ActiveModel,
+    ) -> AppResult<user::Model> {
+        // Reuse internal methods as locks are reentrant (actually std::sync::Mutex is NOT reentrant, so we must be careful)
+        // Wait, std::sync::Mutex is NOT reentrant in Rust.
+        // So we cannot call self.update_verification and self.update_user if they also lock.
+        // We must implement the logic directly here or refactor to unlock.
+        // For simplicity in this Mock, let's just do it directly.
+
+        let mut users = self.users.lock().unwrap();
+        let mut verifications = self.verifications.lock().unwrap();
+
+        let user_id = user.id.unwrap();
+
+        // Update Verification
+        if let Some(existing_v) = verifications.get_mut(&user_id) {
+            if let Set(v) = verification.verification_code {
+                existing_v.verification_code = v;
+            }
+            if let Set(v) = verification.email_verified {
+                existing_v.email_verified = v;
+            }
+            if let Set(v) = verification.email_verified_at {
+                existing_v.email_verified_at = v;
+            }
+        } else {
+            return Err(AppError::NotFound);
+        }
+
+        // Update User
+        if let Some(existing_u) = users.get_mut(&user_id) {
+            if let Set(v) = user.account_status {
+                existing_u.account_status = v;
+            }
+            if let Set(v) = user.email {
+                existing_u.email = v;
+            }
+        }
+
+        Ok(users.get(&user_id).unwrap().clone())
     }
 }

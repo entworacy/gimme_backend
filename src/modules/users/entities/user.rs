@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "users")]
 pub struct Model {
     #[sea_orm(primary_key)]
+    #[serde(skip_serializing)]
     pub id: i32,
     #[sea_orm(unique, index)]
     pub uuid: String, // Decimal string representation of UUIDv4

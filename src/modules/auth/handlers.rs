@@ -4,6 +4,7 @@ use axum::{
     response::Redirect,
 };
 
+use deadpool_redis::redis::AsyncCommands;
 use serde::Deserialize;
 
 use super::service::AuthService;
@@ -76,7 +77,7 @@ pub async fn request_email_verification(
     tracing::info!("Hit request_email_verification for user_id: {}", claims.sub);
 
     // 1. Fetch User with Details
-    let (user, verification, socials) = state
+    let (user, verification, _socials) = state
         .user_repo
         .find_with_details_by_uuid(&claims.sub)
         .await?
@@ -108,24 +109,28 @@ pub async fn request_email_verification(
     let code: u32 = rand::rng().random_range(100000..999999);
     let code_str = code.to_string();
 
-    // 6. Update Verification
-    let verification_model = verification.ok_or(AppError::InternalServerError(
-        "Verification record missing".to_string(),
-    ))?;
-    let mut verification_active: crate::modules::users::entities::verification::ActiveModel =
-        verification_model.into();
-    verification_active.verification_code = sea_orm::ActiveValue::Set(Some(code_str.clone()));
+    // 6. Store in Redis
+    let mut conn = state
+        .redis_pool
+        .get()
+        .await
+        .map_err(|e| AppError::InternalServerError(e.to_string()))?;
 
+    let redis_key = format!("verification:{}", body.email);
+    let _: () = conn
+        .set_ex(&redis_key, &code_str, 300) // 5 minutes expiration
+        .await
+        .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+
+    // 7. Send Email
     state
-        .user_repo
-        .update_verification(verification_active)
+        .email_provider
+        .send_verification_code(&body.email, &code_str)
         .await?;
 
-    // 7. Mock Send Email
-    tracing::info!("Sending verification code {} to {}", code_str, body.email);
-
     Ok(Json(serde_json::json!({
-        "message": "Verification code sent"
+        "message": "Verification code sent",
+        "code": "OK"
     })))
 }
 
@@ -154,13 +159,31 @@ pub async fn verify_email_code(
             return Ok(Json(serde_json::json!({ "message": "Already verified" })));
         }
 
-        match &v.verification_code {
-            Some(stored_code) => {
-                if stored_code != &body.code {
+        // Check Redis
+        let mut conn = state
+            .redis_pool
+            .get()
+            .await
+            .map_err(|e| AppError::InternalServerError(e.to_string()))?;
+
+        let redis_key = format!("verification:{}", body.email);
+        let stored_code: Option<String> = conn.get(&redis_key).await.map_err(|e| {
+            AppError::InternalServerError("해당 이메일 인증 정보가 존재하지 않습니다.".to_string())
+        })?;
+
+        match stored_code {
+            Some(code) => {
+                if code != body.code {
                     return Err(AppError::BadRequest(
                         "Invalid verification code".to_string(),
                     ));
                 }
+                // Determine if we should delete the key after successful verification?
+                // It's good practice.
+                let _: () = conn
+                    .del(&redis_key)
+                    .await
+                    .map_err(|e| AppError::InternalServerError(e.to_string()))?;
             }
             None => {
                 return Err(AppError::BadRequest(
@@ -174,7 +197,7 @@ pub async fn verify_email_code(
         ));
     }
 
-    // 3. Update Verification (Verified = true, Clear Code)
+    // 3. Update Verification (Verified = true, Clear Code if it was in DB, but it's not anymore)
     let verification_model = verification.ok_or(AppError::InternalServerError(
         "Verification record missing".to_string(),
     ))?;
@@ -183,19 +206,24 @@ pub async fn verify_email_code(
     let mut user_active: crate::modules::users::entities::user::ActiveModel = user.into();
     user_active.account_status =
         sea_orm::ActiveValue::Set(crate::modules::users::entities::enums::AccountStatus::Active);
-    verification_active.verification_code = sea_orm::ActiveValue::Set(None); // Clear code
+    user_active.email = sea_orm::ActiveValue::Set(body.email);
+
+    // We don't store code in DB anymore, so no need to clear it from DB specifically,
+    // unless we want to ensure it's null if we used to store it there.
+    // But let's just update the status.
     verification_active.email_verified = sea_orm::ActiveValue::Set(true);
     verification_active.email_verified_at =
         sea_orm::ActiveValue::Set(Some(chrono::Utc::now().naive_utc()));
+    verification_active.verification_code = sea_orm::ActiveValue::Set(None); // Ensure it's cleared if it existed
 
     state
         .user_repo
-        .update_verification(verification_active)
+        .complete_email_verification(user_active, verification_active)
         .await?;
-    state.user_repo.update_user(user_active).await?;
 
     // 5. Success
     Ok(Json(serde_json::json!({
-        "message": "Email verified successfully"
+        "message": "Email verified successfully.",
+        "code": "OK"
     })))
 }
