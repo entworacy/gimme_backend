@@ -42,5 +42,11 @@ pub trait UserRepository: Send + Sync {
         verification: verification::ActiveModel,
     ) -> AppResult<verification::Model>;
 
+    // Deprecated for direct usage, but kept for compatibility or internal logic if needed
     async fn begin_txn(&self) -> AppResult<Box<dyn TxUserRepository>>;
+
+    fn with_transaction(
+        &self,
+        uow: &dyn crate::shared::repository::UnitOfWork,
+    ) -> Option<Box<dyn UserRepository>>;
 }

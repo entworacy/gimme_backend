@@ -1,0 +1,42 @@
+﻿warning: unused import: `sea_orm::*`
+ --> src\modules\users\repository.rs:2:5
+  |
+2 | use sea_orm::*;
+  |     ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+System.Management.Automation.RemoteException
+warning: unused import: `std::collections::HashMap`
+ --> src\modules\users\repository.rs:3:5
+  |
+3 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+System.Management.Automation.RemoteException
+warning: unused imports: `Arc` and `Mutex`
+ --> src\modules\users\repository.rs:4:17
+  |
+4 | use std::sync::{Arc, Mutex};
+  |                 ^^^  ^^^^^
+System.Management.Automation.RemoteException
+warning: unused import: `AppError`
+ --> src\modules\users\repository.rs:7:28
+  |
+7 | use crate::shared::error::{AppError, AppResult};
+  |                            ^^^^^^^^
+System.Management.Automation.RemoteException
+warning: unused import: `sea_orm::ActiveModelTrait`
+ --> src\modules\auth\service.rs:6:5
+  |
+6 | use sea_orm::ActiveModelTrait;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+System.Management.Automation.RemoteException
+warning: unused variable: `e`
+   --> src\modules\auth\handlers.rs:188:79
+    |
+188 |         let stored_code: Option<String> = conn.get(&redis_key).await.map_err(|e| {
+    |                                                                               ^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+System.Management.Automation.RemoteException
+warning: `gimme_backend` (lib) generated 6 warnings (run `cargo fix --lib -p gimme_backend` to apply 5 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.05s

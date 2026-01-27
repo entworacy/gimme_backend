@@ -15,10 +15,24 @@ pub async fn init_repo_manager(
                 "인메모리 데이터베이스를 사용하는 중으로 Repository의 데이터베이스에는 None이 할당되어 있습니다."
             );
         }
-        Arc::new(InMemoryRepositoryManager::new()) as Arc<dyn RepositoryManager>
+        let mut manager = InMemoryRepositoryManager::new();
+        let user_repo = crate::shared::infra::repository::InMemoryUserRepository::default();
+
+        manager.register::<Arc<dyn crate::modules::users::repository::UserRepository>>(Arc::new(
+            user_repo,
+        ));
+
+        Arc::new(manager) as Arc<dyn RepositoryManager>
     } else {
         tracing::info!("Connected to PostgreSQL Repository Manager");
-        let db = db.expect("Database connection is required for production");
-        Arc::new(PostgresRepositoryManager::new(db)) as Arc<dyn RepositoryManager>
+        let db = Arc::new(db.expect("Database connection is required for production"));
+        let mut manager = PostgresRepositoryManager::new(db.clone());
+        let user_repo = crate::shared::infra::repository::PostgresUserRepository::new(db.clone());
+
+        manager.register::<Arc<dyn crate::modules::users::repository::UserRepository>>(Arc::new(
+            user_repo,
+        ));
+
+        Arc::new(manager) as Arc<dyn RepositoryManager>
     }
 }

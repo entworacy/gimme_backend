@@ -6,10 +6,12 @@ use serde::Serialize;
 
 use crate::modules::users::entities::enums::AccountStatus;
 use crate::modules::users::entities::{social, user, verification};
+use crate::modules::users::repository::UserRepository;
 use crate::shared::{
     error::{AppError, AppResult},
     state::AppState,
 };
+use std::sync::Arc;
 #[derive(Serialize)]
 pub struct UserResponse {
     pub id: i32,
@@ -47,12 +49,11 @@ pub async fn get_user(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> AppResult<Json<UserResponse>> {
-    let user: user::Model = state
-        .repo_manager
-        .user_repo()
-        .find_by_id(id)
-        .await?
-        .ok_or(AppError::NotFound)?;
+    let user_repo = state.repo_manager.get::<Arc<dyn UserRepository>>().ok_or(
+        AppError::InternalServerError("UserRepository not registered".to_string()),
+    )?;
+
+    let user: user::Model = user_repo.find_by_id(id).await?.ok_or(AppError::NotFound)?;
 
     Ok(Json(UserResponse {
         id: user.id,
@@ -74,11 +75,12 @@ pub async fn get_me(
     State(state): State<AppState>,
     claims: crate::modules::auth::service::Claims,
 ) -> AppResult<Json<UserResponse>> {
-    let detail: Option<(user::Model, Option<verification::Model>, Vec<social::Model>)> = state
-        .repo_manager
-        .user_repo()
-        .find_with_details_by_uuid(&claims.sub)
-        .await?;
+    let user_repo = state.repo_manager.get::<Arc<dyn UserRepository>>().ok_or(
+        AppError::InternalServerError("UserRepository not registered".to_string()),
+    )?;
+
+    let detail: Option<(user::Model, Option<verification::Model>, Vec<social::Model>)> =
+        user_repo.find_with_details_by_uuid(&claims.sub).await?;
     let (user, verification, socials) = detail.ok_or(AppError::NotFound)?;
 
     let verification_response = verification.map(|v| UserVerificationResponse {

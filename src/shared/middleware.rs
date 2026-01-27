@@ -5,10 +5,12 @@ use axum::{
 };
 
 use crate::modules::auth::service::Claims;
+use crate::modules::users::repository::UserRepository;
 use crate::shared::{
     error::{AppError, AppResult},
     state::AppState,
 };
+use std::sync::Arc;
 
 pub async fn require_email_verified(
     State(state): State<AppState>,
@@ -16,9 +18,11 @@ pub async fn require_email_verified(
     request: Request,
     next: Next,
 ) -> AppResult<Response> {
-    let (_, verification, _) = state
-        .repo_manager
-        .user_repo()
+    let user_repo = state.repo_manager.get::<Arc<dyn UserRepository>>().ok_or(
+        AppError::InternalServerError("UserRepository not registered".to_string()),
+    )?;
+
+    let (_, verification, _) = user_repo
         .find_with_details_by_uuid(&claims.sub)
         .await?
         .ok_or(AppError::NotFound)?; // User not found implies invalid token effectively here

@@ -10,10 +10,12 @@ use serde::Deserialize;
 use super::service::AuthService;
 use crate::modules::users::entities::social::SocialProvider;
 use crate::modules::users::entities::{social, user, verification};
+use crate::modules::users::repository::UserRepository;
 use crate::shared::{
     error::{AppError, AppResult},
     state::AppState,
 };
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct AuthCallbackParams {
@@ -49,8 +51,12 @@ pub async fn callback_kakao(
     let user_info = kakao_provider.get_user_info(&params.code).await?;
 
     // 2. Login or Register
+    let user_repo = state.repo_manager.get::<Arc<dyn UserRepository>>().ok_or(
+        AppError::InternalServerError("UserRepository not registered".to_string()),
+    )?;
+
     let (token, need_more_action) = AuthService::handle_social_login(
-        &*state.repo_manager.user_repo(),
+        user_repo.as_ref(),
         &state.config,
         SocialProvider::Kakao,
         user_info,
@@ -78,13 +84,15 @@ pub async fn request_email_verification(
     tracing::info!("Hit request_email_verification for user_id: {}", claims.sub);
 
     // 1. Fetch User with Details
+    let user_repo = state.repo_manager.get::<Arc<dyn UserRepository>>().ok_or(
+        AppError::InternalServerError("UserRepository not registered".to_string()),
+    )?;
+
     let (user, verification, _socials): (
         user::Model,
         Option<verification::Model>,
         Vec<social::Model>,
-    ) = state
-        .repo_manager
-        .user_repo()
+    ) = user_repo
         .find_with_details_by_uuid(&claims.sub)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -152,10 +160,12 @@ pub async fn verify_email_code(
     Json(body): Json<VerifyEmailCodeRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     // 1. Fetch User with Details
+    let user_repo = state.repo_manager.get::<Arc<dyn UserRepository>>().ok_or(
+        AppError::InternalServerError("UserRepository not registered".to_string()),
+    )?;
+
     let (user, verification, _): (user::Model, Option<verification::Model>, Vec<social::Model>) =
-        state
-            .repo_manager
-            .user_repo()
+        user_repo
             .find_with_details_by_uuid(&claims.sub)
             .await?
             .ok_or(AppError::NotFound)?; // Unauthorized?
@@ -225,11 +235,16 @@ pub async fn verify_email_code(
     verification_active.verification_code = sea_orm::ActiveValue::Set(None); // Ensure it's cleared if it existed
 
     let uow = state.repo_manager.begin().await?;
+    let tx_user_repo = user_repo
+        .with_transaction(&*uow)
+        .ok_or(AppError::InternalServerError(
+            "Failed to start transaction for user repo".to_string(),
+        ))?;
 
-    uow.user_repo()
+    tx_user_repo
         .update_verification(verification_active)
         .await?;
-    uow.user_repo().update_user(user_active).await?;
+    tx_user_repo.update_user(user_active).await?;
 
     uow.commit().await?;
 
