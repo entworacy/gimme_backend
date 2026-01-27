@@ -15,7 +15,7 @@ pub async fn create_app_state(config: &Config) -> AppState {
 
     // Pass ownership of db_pool because repo needs it.
     // connect_postgres returns DatabaseConnection which is an Arc-wrapper.
-    let user_repo = repositories::init_user_repo(config, db_pool).await;
+    let repo_manager = repositories::init_repo_manager(config, db_pool).await;
 
     let auth_registry = services::init_auth_registry(config);
     let email_provider = services::init_email_provider(config);
@@ -23,7 +23,7 @@ pub async fn create_app_state(config: &Config) -> AppState {
     AppState {
         config: Arc::new(config.clone()),
         auth_registry,
-        user_repo,
+        repo_manager,
         email_provider,
         redis_pool,
     }

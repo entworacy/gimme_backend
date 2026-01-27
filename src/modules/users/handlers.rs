@@ -5,6 +5,7 @@ use axum::{
 use serde::Serialize;
 
 use crate::modules::users::entities::enums::AccountStatus;
+use crate::modules::users::entities::{social, user, verification};
 use crate::shared::{
     error::{AppError, AppResult},
     state::AppState,
@@ -46,8 +47,9 @@ pub async fn get_user(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> AppResult<Json<UserResponse>> {
-    let user = state
-        .user_repo
+    let user: user::Model = state
+        .repo_manager
+        .user_repo()
         .find_by_id(id)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -72,11 +74,12 @@ pub async fn get_me(
     State(state): State<AppState>,
     claims: crate::modules::auth::service::Claims,
 ) -> AppResult<Json<UserResponse>> {
-    let (user, verification, socials) = state
-        .user_repo
+    let detail: Option<(user::Model, Option<verification::Model>, Vec<social::Model>)> = state
+        .repo_manager
+        .user_repo()
         .find_with_details_by_uuid(&claims.sub)
-        .await?
-        .ok_or(AppError::NotFound)?;
+        .await?;
+    let (user, verification, socials) = detail.ok_or(AppError::NotFound)?;
 
     let verification_response = verification.map(|v| UserVerificationResponse {
         email_verified: v.email_verified,

@@ -17,7 +17,8 @@ pub async fn require_email_verified(
     next: Next,
 ) -> AppResult<Response> {
     let (_, verification, _) = state
-        .user_repo
+        .repo_manager
+        .user_repo()
         .find_with_details_by_uuid(&claims.sub)
         .await?
         .ok_or(AppError::NotFound)?; // User not found implies invalid token effectively here

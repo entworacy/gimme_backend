@@ -1,10 +1,10 @@
 use chrono::{Duration, Utc};
 use jsonwebtoken::{EncodingKey, Header, encode};
 
-use serde::{Deserialize, Serialize};
-
 use crate::modules::users::entities::enums::AccountStatus;
 use crate::modules::users::repository::UserRepository;
+use sea_orm::ActiveModelTrait;
+use serde::{Deserialize, Serialize};
 
 use super::providers::OAuthUserInfo;
 use crate::modules::users::{
@@ -23,11 +23,7 @@ pub struct Claims {
 pub struct AuthService;
 
 impl AuthService {
-    pub async fn reset_email_verified(
-        repo: &dyn UserRepository,
-        uuid: String,
-        target_email: String,
-    ) -> AppResult<bool> {
+    pub async fn reset_email_verified(repo: &dyn UserRepository, uuid: String) -> AppResult<bool> {
         let (_, verification, _) = repo
             .find_with_details_by_uuid(&uuid)
             .await?
@@ -35,8 +31,8 @@ impl AuthService {
 
         let mut verification_model: crate::modules::users::entities::verification::ActiveModel =
             verification.ok_or(AppError::NotFound)?.into();
-        verification_model.email_verified = true;
-        verification_model.update().await?;
+        verification_model.email_verified = sea_orm::ActiveValue::Set(false);
+        repo.update_verification(verification_model).await?;
         Ok(true)
     }
 

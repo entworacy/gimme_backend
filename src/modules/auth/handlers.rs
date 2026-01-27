@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use super::service::AuthService;
 use crate::modules::users::entities::social::SocialProvider;
+use crate::modules::users::entities::{social, user, verification};
 use crate::shared::{
     error::{AppError, AppResult},
     state::AppState,
@@ -49,7 +50,7 @@ pub async fn callback_kakao(
 
     // 2. Login or Register
     let (token, need_more_action) = AuthService::handle_social_login(
-        state.user_repo.as_ref(),
+        &*state.repo_manager.user_repo(),
         &state.config,
         SocialProvider::Kakao,
         user_info,
@@ -77,8 +78,13 @@ pub async fn request_email_verification(
     tracing::info!("Hit request_email_verification for user_id: {}", claims.sub);
 
     // 1. Fetch User with Details
-    let (user, verification, _socials) = state
-        .user_repo
+    let (user, verification, _socials): (
+        user::Model,
+        Option<verification::Model>,
+        Vec<social::Model>,
+    ) = state
+        .repo_manager
+        .user_repo()
         .find_with_details_by_uuid(&claims.sub)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -146,11 +152,13 @@ pub async fn verify_email_code(
     Json(body): Json<VerifyEmailCodeRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     // 1. Fetch User with Details
-    let (user, verification, _) = state
-        .user_repo
-        .find_with_details_by_uuid(&claims.sub)
-        .await?
-        .ok_or(AppError::NotFound)?; // Unauthorized?
+    let (user, verification, _): (user::Model, Option<verification::Model>, Vec<social::Model>) =
+        state
+            .repo_manager
+            .user_repo()
+            .find_with_details_by_uuid(&claims.sub)
+            .await?
+            .ok_or(AppError::NotFound)?; // Unauthorized?
 
     // 2. Verify Code
     if let Some(v) = &verification {
@@ -216,10 +224,14 @@ pub async fn verify_email_code(
         sea_orm::ActiveValue::Set(Some(chrono::Utc::now().naive_utc()));
     verification_active.verification_code = sea_orm::ActiveValue::Set(None); // Ensure it's cleared if it existed
 
-    state
-        .user_repo
-        .complete_email_verification(user_active, verification_active)
+    let uow = state.repo_manager.begin().await?;
+
+    uow.user_repo()
+        .update_verification(verification_active)
         .await?;
+    uow.user_repo().update_user(user_active).await?;
+
+    uow.commit().await?;
 
     // 5. Success
     Ok(Json(serde_json::json!({
