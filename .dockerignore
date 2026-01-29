@@ -1,0 +1,20 @@
+# Build artifacts
+target/
+**/*.rs.bk
+
+# Git
+.git/
+.gitignore
+
+# Environment variables
+.env
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Logs and temps
+*.log
+*.txt
+tmp/

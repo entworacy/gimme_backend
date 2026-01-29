@@ -6,6 +6,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/login/kakao", get(handlers::login_kakao))
         .route("/callback/kakao", get(handlers::callback_kakao))
+        .route("/view/move-kakao", get(handlers::view_move_kakao))
         .route(
             "/validate-email",
             axum::routing::post(handlers::request_email_verification),

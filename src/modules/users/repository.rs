@@ -1,16 +1,6 @@
-use async_trait::async_trait;
-use sea_orm::*;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
 use super::entities::{social, user, verification};
-use crate::shared::error::{AppError, AppResult};
-
-#[async_trait]
-pub trait TxUserRepository: UserRepository {
-    async fn commit(self: Box<Self>) -> AppResult<()>;
-    async fn rollback(self: Box<Self>) -> AppResult<()>;
-}
+use crate::shared::error::AppResult;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait UserRepository: Send + Sync {
@@ -32,18 +22,12 @@ pub trait UserRepository: Send + Sync {
 
     async fn update_user(&self, user: user::ActiveModel) -> AppResult<user::Model>;
 
-    async fn find_with_details_by_uuid(
-        &self,
-        uuid: &str,
-    ) -> AppResult<Option<(user::Model, Option<verification::Model>, Vec<social::Model>)>>;
+    async fn find_with_details_by_uuid(&self, uuid: &str) -> AppResult<Option<user::Model>>;
 
     async fn update_verification(
         &self,
         verification: verification::ActiveModel,
     ) -> AppResult<verification::Model>;
-
-    // Deprecated for direct usage, but kept for compatibility or internal logic if needed
-    async fn begin_txn(&self) -> AppResult<Box<dyn TxUserRepository>>;
 
     fn with_transaction(
         &self,

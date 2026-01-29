@@ -16,7 +16,8 @@ pub async fn init_repo_manager(
             );
         }
         let mut manager = InMemoryRepositoryManager::new();
-        let user_repo = crate::shared::infra::repository::InMemoryUserRepository::default();
+        let user_repo =
+            crate::modules::users::infra::persistence::InMemoryUserRepository::default();
 
         manager.register::<Arc<dyn crate::modules::users::repository::UserRepository>>(Arc::new(
             user_repo,
@@ -27,11 +28,19 @@ pub async fn init_repo_manager(
         tracing::info!("Connected to PostgreSQL Repository Manager");
         let db = Arc::new(db.expect("Database connection is required for production"));
         let mut manager = PostgresRepositoryManager::new(db.clone());
-        let user_repo = crate::shared::infra::repository::PostgresUserRepository::new(db.clone());
+        let user_repo =
+            crate::modules::users::infra::persistence::PostgresUserRepository::new(db.clone());
+        let delivery_repo =
+            crate::modules::delivery::infra::persistence::PostgresDeliveryRepository::new(
+                db.clone(),
+            );
 
         manager.register::<Arc<dyn crate::modules::users::repository::UserRepository>>(Arc::new(
             user_repo,
         ));
+        manager.register::<Arc<dyn crate::modules::delivery::repository::DeliveryRepository>>(
+            Arc::new(delivery_repo),
+        );
 
         Arc::new(manager) as Arc<dyn RepositoryManager>
     }

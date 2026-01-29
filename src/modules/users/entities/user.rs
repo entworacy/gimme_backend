@@ -21,6 +21,18 @@ pub struct Model {
     #[serde(skip_deserializing)]
     pub updated_at: DateTime,
     pub last_login_at: Option<DateTime>,
+
+    #[sea_orm(ignore)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<verification::Model>,
+
+    #[sea_orm(ignore)]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub socials: Vec<super::social::Model>,
+
+    #[sea_orm(ignore)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delivery: Option<crate::modules::delivery::entities::delivery_data::Model>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -29,6 +41,8 @@ pub enum Relation {
     UserVerification,
     #[sea_orm(has_many = "super::social::Entity")]
     UserSocials,
+    #[sea_orm(has_one = "crate::modules::delivery::entities::delivery_data::Entity")]
+    UserDeliveryData,
 }
 
 impl Related<verification::Entity> for Entity {
@@ -40,6 +54,12 @@ impl Related<verification::Entity> for Entity {
 impl Related<super::social::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UserSocials.def()
+    }
+}
+
+impl Related<crate::modules::delivery::entities::delivery_data::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserDeliveryData.def()
     }
 }
 

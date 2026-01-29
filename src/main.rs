@@ -1,6 +1,8 @@
 use axum::{Router, routing::get};
+use gimme_backend::shared::handlers::{handler_404, handler_500};
 use gimme_backend::{bootstrap, modules, shared::config::Config};
 use std::net::SocketAddr;
+use tower_http::catch_panic::CatchPanicLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -24,7 +26,9 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
         .nest("/users", modules::users::router::router(app_state.clone()))
-        .nest("/auth", modules::auth::router::router(app_state));
+        .nest("/auth", modules::auth::router::router(app_state))
+        .layer(CatchPanicLayer::custom(handler_500))
+        .fallback(handler_404);
 
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.server_port));

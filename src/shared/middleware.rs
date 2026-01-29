@@ -22,10 +22,11 @@ pub async fn require_email_verified(
         AppError::InternalServerError("UserRepository not registered".to_string()),
     )?;
 
-    let (_, verification, _) = user_repo
+    let user = user_repo
         .find_with_details_by_uuid(&claims.sub)
         .await?
         .ok_or(AppError::NotFound)?; // User not found implies invalid token effectively here
+    let verification = user.verification;
 
     if let Some(v) = verification {
         if v.email_verified {

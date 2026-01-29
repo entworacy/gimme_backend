@@ -90,6 +90,10 @@ mod tests {
     async fn test_gmail_provider_dev_mode() {
         let config = Config {
             database_url: "".to_string(),
+            database_max_connections: 100,
+            database_min_connections: 5,
+            database_connect_timeout: 8,
+            database_idle_timeout: 8,
             server_host: "localhost".to_string(),
             server_port: 3000,
             rust_log: "info".to_string(),

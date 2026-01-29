@@ -5,6 +5,10 @@ use std::env;
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
     pub database_url: String,
+    pub database_max_connections: u32,
+    pub database_min_connections: u32,
+    pub database_connect_timeout: u64,
+    pub database_idle_timeout: u64,
     pub server_host: String,
     pub server_port: u16,
     pub rust_log: String,
@@ -43,6 +47,22 @@ impl Config {
 
         Self {
             database_url,
+            database_max_connections: env::var("DATABASE_MAX_CONNECTIONS")
+                .unwrap_or_else(|_| "100".to_string())
+                .parse::<u32>()
+                .expect("DATABASE_MAX_CONNECTIONS must be a valid number"),
+            database_min_connections: env::var("DATABASE_MIN_CONNECTIONS")
+                .unwrap_or_else(|_| "5".to_string()) // Minimum connections to keep alive
+                .parse::<u32>()
+                .expect("DATABASE_MIN_CONNECTIONS must be a valid number"),
+            database_connect_timeout: env::var("DATABASE_CONNECT_TIMEOUT")
+                .unwrap_or_else(|_| "8".to_string())
+                .parse::<u64>()
+                .expect("DATABASE_CONNECT_TIMEOUT must be a valid number"),
+            database_idle_timeout: env::var("DATABASE_IDLE_TIMEOUT")
+                .unwrap_or_else(|_| "8".to_string())
+                .parse::<u64>()
+                .expect("DATABASE_IDLE_TIMEOUT must be a valid number"),
             server_host,
             server_port,
             rust_log,

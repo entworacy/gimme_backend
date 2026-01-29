@@ -1,7 +1,8 @@
+use askama::Template;
 use axum::{
     Json,
     extract::{Query, State},
-    response::Redirect,
+    response::{Html, IntoResponse, Redirect},
 };
 
 use deadpool_redis::redis::AsyncCommands;
@@ -9,7 +10,7 @@ use serde::Deserialize;
 
 use super::service::AuthService;
 use crate::modules::users::entities::social::SocialProvider;
-use crate::modules::users::entities::{social, user, verification};
+// // use crate::modules::users::entities::user;
 use crate::modules::users::repository::UserRepository;
 use crate::shared::{
     error::{AppError, AppResult},
@@ -88,14 +89,11 @@ pub async fn request_email_verification(
         AppError::InternalServerError("UserRepository not registered".to_string()),
     )?;
 
-    let (user, verification, _socials): (
-        user::Model,
-        Option<verification::Model>,
-        Vec<social::Model>,
-    ) = user_repo
+    let user = user_repo
         .find_with_details_by_uuid(&claims.sub)
         .await?
         .ok_or(AppError::NotFound)?;
+    let verification = user.verification.clone();
 
     // 2. Validate User Status (Must be Pending)
     if user.account_status != crate::modules::users::entities::enums::AccountStatus::Pending {
@@ -164,11 +162,11 @@ pub async fn verify_email_code(
         AppError::InternalServerError("UserRepository not registered".to_string()),
     )?;
 
-    let (user, verification, _): (user::Model, Option<verification::Model>, Vec<social::Model>) =
-        user_repo
-            .find_with_details_by_uuid(&claims.sub)
-            .await?
-            .ok_or(AppError::NotFound)?; // Unauthorized?
+    let user = user_repo
+        .find_with_details_by_uuid(&claims.sub)
+        .await?
+        .ok_or(AppError::NotFound)?; // Unauthorized?
+    let verification = user.verification.clone();
 
     // 2. Verify Code
     if let Some(v) = &verification {
@@ -253,4 +251,23 @@ pub async fn verify_email_code(
         "message": "Email verified successfully.",
         "code": "OK"
     })))
+}
+
+#[derive(Template)]
+#[template(path = "auth/move.html")]
+pub struct MoveKakaoTemplate;
+
+pub async fn view_move_kakao() -> impl IntoResponse {
+    let template = MoveKakaoTemplate;
+    match template.render() {
+        Ok(html) => Html(html).into_response(),
+        Err(err) => {
+            tracing::error!("Template render failed: {}", err);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+            )
+                .into_response()
+        }
+    }
 }

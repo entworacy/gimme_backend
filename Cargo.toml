@@ -3,6 +3,9 @@ name = "gimme_backend"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [".", "migration"]
+
 [dependencies]
 axum = "0.7"
 tokio = { version = "1.0", features = ["full"] }
@@ -12,7 +15,7 @@ sea-orm = { version = "1.1", features = ["sqlx-postgres", "runtime-tokio-rustls"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tower-http = { version = "0.6", features = ["trace", "cors"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "catch-panic"] }
 thiserror = "2.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.20.0", features = ["v4", "fast-rng"] }
@@ -24,3 +27,5 @@ rand = "0.9.2"
 lettre = { version = "0.11", default-features = false, features = ["tokio1", "tokio1-native-tls", "smtp-transport", "builder"] }
 redis = { version = "1.0.2", features = ["tokio-comp"] }
 deadpool-redis = "0.22.1"
+askama = { version = "0.15", default-features = false, features = ["std", "derive"] }
+migration = { path = "migration" }

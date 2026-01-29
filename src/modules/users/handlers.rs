@@ -5,7 +5,7 @@ use axum::{
 use serde::Serialize;
 
 use crate::modules::users::entities::enums::AccountStatus;
-use crate::modules::users::entities::{social, user, verification};
+use crate::modules::users::entities::user;
 use crate::modules::users::repository::UserRepository;
 use crate::shared::{
     error::{AppError, AppResult},
@@ -14,6 +14,7 @@ use crate::shared::{
 use std::sync::Arc;
 #[derive(Serialize)]
 pub struct UserResponse {
+    #[serde(skip_serializing)]
     pub id: i32,
     pub uuid: String,
     pub username: String,
@@ -79,24 +80,29 @@ pub async fn get_me(
         AppError::InternalServerError("UserRepository not registered".to_string()),
     )?;
 
-    let detail: Option<(user::Model, Option<verification::Model>, Vec<social::Model>)> =
-        user_repo.find_with_details_by_uuid(&claims.sub).await?;
-    let (user, verification, socials) = detail.ok_or(AppError::NotFound)?;
+    let user = user_repo
+        .find_with_details_by_uuid(&claims.sub)
+        .await?
+        .ok_or(AppError::NotFound)?;
 
-    let verification_response = verification.map(|v| UserVerificationResponse {
-        email_verified: v.email_verified,
-        email_verified_at: v.email_verified_at,
-        phone_verified: v.phone_verified,
-        phone_verified_at: v.phone_verified_at,
-        business_verified: v.business_verified,
-        business_info: v.business_info,
-    });
+    let verification_response = user
+        .verification
+        .as_ref()
+        .map(|v| UserVerificationResponse {
+            email_verified: v.email_verified,
+            email_verified_at: v.email_verified_at,
+            phone_verified: v.phone_verified,
+            phone_verified_at: v.phone_verified_at,
+            business_verified: v.business_verified,
+            business_info: v.business_info.clone(),
+        });
 
-    let social_responses = socials
-        .into_iter()
+    let social_responses = user
+        .socials
+        .iter()
         .map(|s| UserSocialResponse {
             provider: format!("{:?}", s.provider),
-            provider_id: s.provider_id,
+            provider_id: s.provider_id.clone(),
             created_at: s.created_at,
         })
         .collect();

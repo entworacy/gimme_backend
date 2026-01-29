@@ -3,7 +3,7 @@ use jsonwebtoken::{EncodingKey, Header, encode};
 
 use crate::modules::users::entities::enums::AccountStatus;
 use crate::modules::users::repository::UserRepository;
-use sea_orm::ActiveModelTrait;
+// use sea_orm::ActiveModelTrait;
 use serde::{Deserialize, Serialize};
 
 use super::providers::OAuthUserInfo;
@@ -24,10 +24,11 @@ pub struct AuthService;
 
 impl AuthService {
     pub async fn reset_email_verified(repo: &dyn UserRepository, uuid: String) -> AppResult<bool> {
-        let (_, verification, _) = repo
+        let user = repo
             .find_with_details_by_uuid(&uuid)
             .await?
             .ok_or(AppError::NotFound)?;
+        let verification = user.verification;
 
         let mut verification_model: crate::modules::users::entities::verification::ActiveModel =
             verification.ok_or(AppError::NotFound)?.into();
@@ -80,6 +81,6 @@ impl AuthService {
             &claims,
             &EncodingKey::from_secret(secret),
         )
-        .map_err(|e| AppError::InternalServerError(format!("JWT generation failed: {}", e)))
+        .map_err(|e| AppError::InternalServerError("JWT generation failed".to_string()))
     }
 }

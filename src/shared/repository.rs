@@ -25,3 +25,7 @@ impl dyn RepositoryManager {
             .and_then(|r| r.downcast_ref())
     }
 }
+
+pub trait Repository<T: ?Sized>: Send + Sync {
+    fn with_transaction(&self, uow: &dyn UnitOfWork) -> Option<Box<T>>;
+}

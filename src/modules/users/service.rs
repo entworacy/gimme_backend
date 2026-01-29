@@ -29,11 +29,7 @@ impl UserService {
 
             // Logic a: Check status
             match user.account_status {
-                crate::modules::users::entities::enums::AccountStatus::Active => {
-                    return Err(AppError::Conflict(
-                        "User already exists and is active".to_string(),
-                    ));
-                }
+                crate::modules::users::entities::enums::AccountStatus::Active => return Ok(user),
                 crate::modules::users::entities::enums::AccountStatus::Pending => {
                     // TODO: Re-trigger Email Verification Logic here
                     // For now, just return user to allow login/proceed (or maybe we shouldn't login?)
