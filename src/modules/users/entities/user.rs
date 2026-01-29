@@ -31,8 +31,8 @@ pub struct Model {
     pub socials: Vec<super::social::Model>,
 
     #[sea_orm(ignore)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub delivery: Option<crate::modules::delivery::entities::delivery_data::Model>,
+    #[serde(skip_serializing)]
+    pub delivery: Vec<crate::modules::delivery::entities::delivery_data::Model>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -41,7 +41,7 @@ pub enum Relation {
     UserVerification,
     #[sea_orm(has_many = "super::social::Entity")]
     UserSocials,
-    #[sea_orm(has_one = "crate::modules::delivery::entities::delivery_data::Entity")]
+    #[sea_orm(has_many = "crate::modules::delivery::entities::delivery_data::Entity")]
     UserDeliveryData,
 }
 

@@ -291,7 +291,7 @@ impl UserRepository for InMemoryUserRepository {
             last_login_at: user.last_login_at.unwrap(),
             verification: None,
             socials: vec![],
-            delivery: None,
+            delivery: vec![],
         };
 
         users.insert(new_id, model_user.clone());
