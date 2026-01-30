@@ -2,6 +2,21 @@ use crate::shared::error::AppResult;
 use async_trait::async_trait;
 use std::any::{Any, TypeId};
 
+#[macro_export]
+macro_rules! define_repo {
+    ($trait_name:ident, { $($methods:tt)* }) => {
+        #[async_trait::async_trait]
+        pub trait $trait_name: Send + Sync {
+            $($methods)*
+
+            fn with_transaction(
+                &self,
+                uow: &dyn $crate::shared::repository::UnitOfWork,
+            ) -> Option<Box<dyn $trait_name>>;
+        }
+    };
+}
+
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any;
 }

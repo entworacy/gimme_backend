@@ -1,9 +1,7 @@
 use super::entities::{social, user, verification};
 use crate::shared::error::AppResult;
-use async_trait::async_trait;
 
-#[async_trait]
-pub trait UserRepository: Send + Sync {
+crate::define_repo!(UserRepository, {
     async fn find_by_id(&self, id: i32) -> AppResult<Option<user::Model>>;
     async fn find_by_uuid(&self, uuid: &str) -> AppResult<Option<user::Model>>;
     async fn find_by_email(&self, email: &str) -> AppResult<Option<user::Model>>;
@@ -28,9 +26,4 @@ pub trait UserRepository: Send + Sync {
         &self,
         verification: verification::ActiveModel,
     ) -> AppResult<verification::Model>;
-
-    fn with_transaction(
-        &self,
-        uow: &dyn crate::shared::repository::UnitOfWork,
-    ) -> Option<Box<dyn UserRepository>>;
-}
+});
